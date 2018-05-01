@@ -10,21 +10,29 @@ import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.balmaz.saildatamanagerclient.Location.MapHelper;
 import com.example.balmaz.saildatamanagerclient.Model.UserData;
 import com.example.balmaz.saildatamanagerclient.R;
-import com.example.balmaz.saildatamanagerclient.Service.ServiceLocation;
+import com.example.balmaz.saildatamanagerclient.Service.CoAPPostService;
 import com.example.balmaz.saildatamanagerclient.Service.UserDataBluetoothService;
+import com.google.android.gms.maps.SupportMapFragment;
 
 import java.util.ArrayList;
 import java.util.Date;
 
 import static com.example.balmaz.saildatamanagerclient.Adapter.LeDeviceListAdapter.BLUETOOTH_DEVICE_ID;
-import static com.example.balmaz.saildatamanagerclient.Service.ServiceLocation.BR_NEW_LOCATION;
-import static com.example.balmaz.saildatamanagerclient.Service.ServiceLocation.KEY_LOCATION;
+import static com.example.balmaz.saildatamanagerclient.Location.MapHelper.BR_NEW_LOCATION;
+import static com.example.balmaz.saildatamanagerclient.Location.MapHelper.KEY_LOCATION;
+import static com.example.balmaz.saildatamanagerclient.Service.CoAPPostService.ACTION_COAP_POST_RESPONSE;
+
 
 /**
  * Created by balmaz on 2018. 04. 16..
@@ -50,38 +58,19 @@ public class InstrumentDataUIActivity extends AppCompatActivity {
     private boolean displayLocationData;
 
     private ArrayList<UserData> mUserDataList = new ArrayList<>();
-    private UserData mTempUserData;
 
-    private final BroadcastReceiver mUserDataUpdateReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            final String action = intent.getAction();
+    private Location lastLocation;
 
-            if (UserDataBluetoothService.ACTION_DATA_AVAILABLE.equals(action)) {
-                displayInstrumentData = true;
-                displayData(intent.getStringExtra(UserDataBluetoothService.EXTRA_DATA), null);
-            }
-            if (UserDataBluetoothService.ACTION_GATT_CONNECTED.equals(action)) {
-                displayData(intent.getAction(), null);
-            }
-            if (UserDataBluetoothService.ACTION_GATT_DISCONNECTED.equals(action)) {
-                displayData(intent.getAction(), null);
-            }
-            if (UserDataBluetoothService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
-                displayData(intent.getAction(), null);
-            }
-            if (BR_NEW_LOCATION.equals(action)) {
-                displayLocationData = true;
-                displayData(null, (Location) intent.getParcelableExtra(KEY_LOCATION));
-            }
 
-        }
-    };
+    private MapHelper mapHelper;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_instrument_data_ui);
+
+        Toolbar myToolbar = (Toolbar) findViewById(R.id.disconnect);
+        setSupportActionBar(myToolbar);
 
         initField(R.id.fieldHeading, this.getString(R.string.heading));
         initField(R.id.fieldLat, this.getString(R.string.lattitude));
@@ -92,8 +81,13 @@ public class InstrumentDataUIActivity extends AppCompatActivity {
         initField(R.id.fieldBattery, this.getString(R.string.battery));
         initField(R.id.fieldSpeed, this.getString(R.string.speed));
 
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        //start location monitoring with google map
+        mapHelper = new MapHelper(InstrumentDataUIActivity.this, mapFragment);
+
         startBluetoothService(getIntent());
-        startService(new Intent(this, ServiceLocation.class));
+
     }
 
     private void initField(int fieldId, String headText) {
@@ -152,34 +146,38 @@ public class InstrumentDataUIActivity extends AppCompatActivity {
         filter.addAction(UserDataBluetoothService.ACTION_GATT_DISCONNECTED);
         filter.addAction(UserDataBluetoothService.ACTION_GATT_SERVICES_DISCOVERED);
         filter.addAction(BR_NEW_LOCATION);
+        filter.addAction(ACTION_COAP_POST_RESPONSE);
         this.registerReceiver(mUserDataUpdateReceiver, filter);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        this.stopService(mServiceIntent);
+        mapHelper.onPause();
         this.unregisterReceiver(mUserDataUpdateReceiver);
     }
 
     private void startBluetoothService(Intent intent) {
-        mDevice = intent.getParcelableExtra(BLUETOOTH_DEVICE_ID);
-        mServiceIntent = new Intent(this, UserDataBluetoothService.class);
-        mServiceIntent.putExtra(BLUETOOTH_DEVICE_ID, mDevice);
-        this.startService(mServiceIntent);
+        if (intent != null) {
+            mDevice = intent.getParcelableExtra(BLUETOOTH_DEVICE_ID);
+            mServiceIntent = new Intent(this, UserDataBluetoothService.class);
+            mServiceIntent.putExtra(BLUETOOTH_DEVICE_ID, mDevice);
+
+            this.startService(mServiceIntent);
+        }
     }
 
-    private void displayData(String rawData, Location currentLocation) {
+    private void displayData(String rawData) {
 
-        if (rawData != null) {
+        UserData mTempUserData = new UserData();
+        if (rawData != null && rawData.replaceAll(" ", "").length() == 20) {
 
-            mTempUserData = new UserData();
             String s = rawData.replaceAll(" ", "");
 
-            mTempUserData.setWindSpeed((hex2decimal(s.substring(0, 2)) / 100) * 1.943844);
+            mTempUserData.setWindSpeed((hex2decimal(s.substring(2, 4) + s.substring(0, 2)) / 100) * 1.94);
             double windSpeed = mTempUserData.getWindSpeed();
 
-            mTempUserData.setWindDirection(hex2decimal(s.substring(4, 6)));
+            mTempUserData.setWindDirection(hex2decimal(s.substring(6, 8) + s.substring(4, 6)));
             int windDirection = mTempUserData.getWindDirection();
 
             mTempUserData.setBatteryLevel(hex2decimal(s.substring(8, 10)) * 10);
@@ -188,77 +186,69 @@ public class InstrumentDataUIActivity extends AppCompatActivity {
             mTempUserData.setTemp(hex2decimal(s.substring(10, 12)) - 100);
             int temperature = mTempUserData.getTemp();
 
-            mTempUserData.setHeading(360 - hex2decimal(s.substring(16, 18)));
+            mTempUserData.setHeading(360 - hex2decimal(s.substring(18) + s.substring(16, 18)));
             int heading = mTempUserData.getHeading();
+            mTempUserData.setLat(lastLocation.getLatitude());
+            mTempUserData.setLon(lastLocation.getLongitude());
+            mTempUserData.setSpeed(lastLocation.getSpeed() * 1.94);
+            mTempUserData.setTimestamp(new Date(lastLocation.getTime()).toString());
+            mTempUserData.setInstrumentID(mDevice.getAddress());
 
             tvWS.setText(" " + windSpeed + " " + getString(R.string.kts_sign));
-            tvWD.setText(" " + windDirection +  " " + getString(R.string.deg_sign));
-            tvTemp.setText(" " + temperature +  " " + getString(R.string.celsius_sign));
-            tvHeading.setText(" " + heading +  " " + getString(R.string.deg_sign));
-            tvBattery.setText(" " + batteryLevel +  " " + getString(R.string.percent_sign));
+            tvWD.setText(" " + windDirection + " " + getString(R.string.deg_sign));
+            tvTemp.setText(" " + temperature + " " + getString(R.string.celsius_sign));
+            tvHeading.setText(" " + heading + " " + getString(R.string.deg_sign));
+            tvBattery.setText(" " + batteryLevel + " " + getString(R.string.percent_sign));
+            tvSpeed.setText(" " + lastLocation.getSpeed() * 1.94 + " " + getString(R.string.kts_sign));
+            tvLon.setText(String.format(" " + lastLocation.getLatitude(), "^[0-9]*\\.[0-9]{1}$"));
+            tvLat.setText(String.format(" " + lastLocation.getLongitude(), "^[0-9]*\\.[0-9]{1}$"));
 
-            Toast.makeText(this, rawData, Toast.LENGTH_LONG).show();
 
-        } else if (currentLocation != null) {
-
-            mTempUserData.setLat(currentLocation.getLatitude());
-            mTempUserData.setLon(currentLocation.getLongitude());
-            mTempUserData.setSpeed(currentLocation.getSpeed() * 1.943844);
-            mTempUserData.setTimestamp(new Date(currentLocation.getTime()).toString());
-
-            tvSpeed.setText(" " + mTempUserData.getSpeed() * 1.943844 +  " " + getString(R.string.kts_sign));
-            tvLon.setText(" " + currentLocation.getLatitude());
-            tvLat.setText(" " + currentLocation.getLongitude());
-        }
-
-        if (displayLocationData && displayInstrumentData) {
-
-            mTempUserData.setInstrumentID(mDevice.getAddress());
             mUserDataList.add(mTempUserData);
 
-            displayInstrumentData = false;
-            displayLocationData = false;
+            //Toast.makeText(this, rawData, Toast.LENGTH_LONG).show();
 
-            if (mUserDataList.size() == 10)
-                aggregateUserDatas();
+        } else {
+            Toast.makeText(this, rawData, Toast.LENGTH_LONG).show();
         }
+        if (mUserDataList.size() == 10)
+            aggregateUserDatas();
     }
 
+
     private void aggregateUserDatas() {
-        double sumSpeed=0;
-        int    sumTemp=0;
-        double sumLat=0;
-        double sumLon=0;
-        double sumWindSpeed=0;
-        int    sumWindDirection=0;
-        int    sumHeading=0;
+        double sumSpeed = 0;
+        int sumTemp = 0;
+        double sumLat = 0;
+        double sumLon = 0;
+        double sumWindSpeed = 0;
+        int sumWindDirection = 0;
+        int sumHeading = 0;
 
         for (int i = 0; i < mUserDataList.size(); i++) {
-            sumSpeed+= mUserDataList.get(i).getSpeed();
-            sumTemp+= mUserDataList.get(i).getTemp();
-            sumLat+= mUserDataList.get(i).getLat();
-            sumLon+= mUserDataList.get(i).getLon();
-            sumWindSpeed+= mUserDataList.get(i).getWindSpeed();
-            sumWindDirection+= mUserDataList.get(i).getWindDirection();
-            sumHeading+= mUserDataList.get(i).getHeading();
+            sumSpeed += mUserDataList.get(i).getSpeed();
+            sumTemp += mUserDataList.get(i).getTemp();
+            sumLat += mUserDataList.get(i).getLat();
+            sumLon += mUserDataList.get(i).getLon();
+            sumWindSpeed += mUserDataList.get(i).getWindSpeed();
+            sumWindDirection += mUserDataList.get(i).getWindDirection();
+            sumHeading += mUserDataList.get(i).getHeading();
         }
 
-        UserData averageUserData=new UserData();
+        UserData averageUserData = new UserData();
 
         averageUserData.setInstrumentID(mUserDataList.get(9).getInstrumentID());
-        averageUserData.setSpeed((sumSpeed/10));
+        averageUserData.setSpeed((sumSpeed / 10));
         averageUserData.setTimestamp(mUserDataList.get(9).getTimestamp());
         averageUserData.setBatteryLevel(mUserDataList.get(9).getBatteryLevel());
-        averageUserData.setHeading((sumHeading/10));
-        averageUserData.setLat((sumLat/10));
-        averageUserData.setLon((sumLon/10));
-        averageUserData.setTemp((sumTemp/10));
-        averageUserData.setWindDirection((sumWindDirection/10));
-        averageUserData.setWindSpeed((sumWindSpeed/10));
+        averageUserData.setHeading((sumHeading / 10));
+        averageUserData.setLat((sumLat / 10));
+        averageUserData.setLon((sumLon / 10));
+        averageUserData.setTemp((sumTemp / 10));
+        averageUserData.setWindDirection((sumWindDirection / 10));
+        averageUserData.setWindSpeed((sumWindSpeed / 10));
 
-        Intent intent=new Intent(NEW_USERDATA_CREATED);
-        intent.putExtra(NEW_USERDATA_EXTRA_DATA,averageUserData);
-        sendBroadcast(intent);
+        CoAPPostService.startActionPostUserData(this, "coap://10.0.2.2:5683/UserDataResource", averageUserData);
 
         mUserDataList.clear();
     }
@@ -277,4 +267,59 @@ public class InstrumentDataUIActivity extends AppCompatActivity {
 
         return val;
     }
+
+    private void disconnect() {
+        //ha leall a service akkor disconnectal a bluetoothGatt (az onDestryban)
+        stopService(new Intent(InstrumentDataUIActivity.this, UserDataBluetoothService.class));
+
+        //vissza terunka kezdokepernyore
+        startActivity(new Intent(InstrumentDataUIActivity.this, MainActivity.class));
+
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.instrument_data_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.disconnect) {
+            disconnect();
+            return true;
+        }
+
+        return false;
+    }
+
+    private final BroadcastReceiver mUserDataUpdateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+
+            if (UserDataBluetoothService.ACTION_DATA_AVAILABLE.equals(action)) {
+                displayInstrumentData = true;
+                displayData(intent.getStringExtra(UserDataBluetoothService.EXTRA_DATA));
+            }
+            if (UserDataBluetoothService.ACTION_GATT_CONNECTED.equals(action)) {
+                displayData(intent.getAction());
+            }
+            if (UserDataBluetoothService.ACTION_GATT_DISCONNECTED.equals(action)) {
+                displayData(intent.getAction());
+            }
+            if (UserDataBluetoothService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
+                displayData(intent.getAction());
+            }
+            if (CoAPPostService.ACTION_COAP_POST_RESPONSE.equals(action)) {
+                displayData(intent.getStringExtra(CoAPPostService.EXTRA_COAP_POST_RESPONSE));
+            }
+            if (BR_NEW_LOCATION.equals(action)) {
+
+                lastLocation = (Location) intent.getParcelableExtra(KEY_LOCATION);
+            }
+
+        }
+    };
 }

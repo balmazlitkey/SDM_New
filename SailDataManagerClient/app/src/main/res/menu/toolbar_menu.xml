@@ -5,4 +5,8 @@
         android:id="@+id/findDevices"
         android:title="search devices">
     </item>
+    <item
+        android:id="@+id/Map"
+        android:title="Map">
+    </item>
 </menu>

@@ -1,20 +1,31 @@
 package com.example.balmaz.saildatamanagerclient.Service;
 
-import android.app.IntentService;
+import android.app.Notification;
+import android.app.PendingIntent;
+import android.app.Service;
+import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
+import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
+import android.content.Context;
 import android.content.Intent;
+import android.os.IBinder;
+import android.support.annotation.Nullable;
+import android.util.Log;
+
+import com.example.balmaz.saildatamanagerclient.Activities.InstrumentDataUIActivity;
 
 import java.util.UUID;
 
+import static android.content.ContentValues.TAG;
 import static com.example.balmaz.saildatamanagerclient.Adapter.LeDeviceListAdapter.BLUETOOTH_DEVICE_ID;
 
-public class UserDataBluetoothService extends IntentService {
+public class UserDataBluetoothService extends Service {
 
     private static final UUID USER_DATA_UUID = convertFromInteger(0x2A39);
     private static final UUID MANUFACTURER_NAME_STRING_UUID = convertFromInteger(0x2A29);
@@ -36,13 +47,16 @@ public class UserDataBluetoothService extends IntentService {
     public final static String ACTION_GATT_SERVICES_DISCOVERED = "ACTION_GATT_SERVICES_DISCOVERED";
     public static final String EXTRA_DATA = "EXTRA_DATA";
 
+    private final int NOTIF_FOREGROUND_ID = 101;
+
     private BluetoothGattCallback mGattCallback;
 
     private BluetoothGattDescriptor descrpitor;
+    private BluetoothGatt mGatt;
+    private BluetoothManager mBluetoothManager;
+    private BluetoothAdapter mBluetoothAdapter;
+    private BluetoothDevice mDevice;
 
-    public UserDataBluetoothService() {
-        super("UserDataBluetoothService");
-    }
 
     private static UUID convertFromInteger(int i) {
         final long MSB = 0x0000000000001000L;
@@ -52,7 +66,23 @@ public class UserDataBluetoothService extends IntentService {
     }
 
     @Override
-    protected void onHandleIntent(Intent intent) {
+    public void onCreate() {
+        super.onCreate();
+        if (mBluetoothManager==null) {
+            mBluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
+        }
+        if (mBluetoothAdapter==null) {
+            mBluetoothAdapter = mBluetoothManager.getAdapter();
+        }
+
+
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        startForeground(NOTIF_FOREGROUND_ID,
+                getMyNotification("Bluetooth tracking in process"));
+
 
         mGattCallback =
                 new BluetoothGattCallback() {
@@ -68,13 +98,14 @@ public class UserDataBluetoothService extends IntentService {
 
                         } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                             intentAction = ACTION_GATT_DISCONNECTED;
-                            broadcastUpdate(intentAction);                        }
+                            broadcastUpdate(intentAction);
+                        }
                     }
 
                     @Override
                     public void onServicesDiscovered(BluetoothGatt gatt, int status) {
                         if (status == BluetoothGatt.GATT_SUCCESS) {
-                          String  intentAction = ACTION_GATT_SERVICES_DISCOVERED;
+                            String intentAction = ACTION_GATT_SERVICES_DISCOVERED;
                             broadcastUpdate(intentAction);
                             writeCharacteristic(gatt, findCharacteristic(gatt, ACTIVATE_ECOMPASS_UUID));
                         }
@@ -114,11 +145,29 @@ public class UserDataBluetoothService extends IntentService {
                 };
 
 
-        BluetoothDevice mDevice = intent.getExtras().getParcelable(BLUETOOTH_DEVICE_ID);
+         mDevice = intent.getExtras().getParcelable(BLUETOOTH_DEVICE_ID);
         if (mDevice != null) {
             connect(mDevice);
-        } //else Hibakezelés
+        }
+        //else Hibakezelés
+
+        return START_STICKY;
     }
+
+    private Notification getMyNotification(String text) {
+        Intent notificationIntent = new Intent(this, InstrumentDataUIActivity.class);
+        PendingIntent contentIntent = PendingIntent.getActivity(this,
+                NOTIF_FOREGROUND_ID,
+                notificationIntent,
+                PendingIntent.FLAG_CANCEL_CURRENT);
+
+        return new Notification.Builder(this)
+                .setContentTitle("Bluetooth tracking")
+                .setContentText(text)
+                .setVibrate(new long[]{1000, 2000, 1000})
+                .setContentIntent(contentIntent).build();
+    }
+
 
     private void readUserData(BluetoothGattCharacteristic characteristic, StringBuilder sb) {
         final byte[] data = characteristic.getValue();
@@ -159,6 +208,7 @@ public class UserDataBluetoothService extends IntentService {
         return null;
     }
 
+
     private boolean writeCharacteristic(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
         if (gatt != null) {
             characteristic.setValue(new byte[]{(byte) 0x01});
@@ -168,12 +218,51 @@ public class UserDataBluetoothService extends IntentService {
     }
 
     public void connect(BluetoothDevice device) {
-        device.connectGatt(UserDataBluetoothService.this, false, mGattCallback);
+
+        if (!isConnected(device)) {
+            mGatt = device.connectGatt(UserDataBluetoothService.this, false, mGattCallback);
+        }
+    }
+
+    private boolean isConnected(BluetoothDevice mdevice) {
+        return mBluetoothManager != null && mBluetoothManager.getConnectionState(mdevice, BluetoothProfile.GATT) == BluetoothProfile.STATE_CONNECTED;
     }
 
     private void broadcastUpdate(final String action) {
         final Intent intent = new Intent(action);
         sendBroadcast(intent);
+    }
+
+    public void disconnect(String address) {
+        if (mBluetoothAdapter == null) {
+            Log.w(TAG, "disconnect: BluetoothAdapter not initialized");
+            return;
+        }
+        final BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
+        int connectionState = mBluetoothManager.getConnectionState(device, BluetoothProfile.GATT);
+        BluetoothGatt bluetoothGatt = mGatt;
+        if (bluetoothGatt != null) {
+            Log.i(TAG, "disconnect");
+            if (connectionState != BluetoothProfile.STATE_DISCONNECTED) {
+                bluetoothGatt.disconnect();
+                bluetoothGatt.close();
+            } else {
+                Log.w(TAG, "Attempt to disconnect in state: " + connectionState);
+            }
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        disconnect(mDevice.getAddress());
+        stopForeground(true);
+        super.onDestroy();
+    }
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
     }
 
 }

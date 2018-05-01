@@ -123,7 +123,12 @@ public class MainActivity extends PermissifyActivity{
         if(item.getItemId() == R.id.findDevices){
             scanLeDevice(mScanning);
             return true;
+        }else if(item.getItemId() == R.id.Map){
+            Intent intent= new Intent(MainActivity.this, MapsActivity.class);
+            startActivity(intent);
+            return true;
         }
+
         return false;
     }
 

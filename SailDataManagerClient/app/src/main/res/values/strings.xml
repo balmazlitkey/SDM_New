@@ -15,4 +15,6 @@
     <string name="celsius_sign">°C</string>
     <string name="percent_sign">%</string>
     <string name="main_toolbar_title">Available devices</string>
+    <string name="title_activity_maps">Map</string>
+    <string name="disconnect">disconnect</string>
 </resources>
