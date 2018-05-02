@@ -170,11 +170,12 @@ public class InstrumentDataUIActivity extends AppCompatActivity {
     private void displayData(String rawData) {
 
         UserData mTempUserData = new UserData();
-        if (rawData != null && rawData.replaceAll(" ", "").length() == 20) {
+        if (rawData != null && rawData.replaceAll(" ", "").length() == 20 && lastLocation !=null) {
 
             String s = rawData.replaceAll(" ", "");
 
-            mTempUserData.setWindSpeed((hex2decimal(s.substring(2, 4) + s.substring(0, 2)) / 100) * 1.94);
+
+            mTempUserData.setWindSpeed(((hex2decimal(s.substring(2, 4) + s.substring(0, 2)) / (double) 100) * 1.94));
             double windSpeed = mTempUserData.getWindSpeed();
 
             mTempUserData.setWindDirection(hex2decimal(s.substring(6, 8) + s.substring(4, 6)));
@@ -194,14 +195,14 @@ public class InstrumentDataUIActivity extends AppCompatActivity {
             mTempUserData.setTimestamp(new Date(lastLocation.getTime()).toString());
             mTempUserData.setInstrumentID(mDevice.getAddress());
 
-            tvWS.setText(" " + windSpeed + " " + getString(R.string.kts_sign));
+            tvWS.setText(" " + String.format("%.2f",windSpeed) + " " + getString(R.string.kts_sign));
             tvWD.setText(" " + windDirection + " " + getString(R.string.deg_sign));
             tvTemp.setText(" " + temperature + " " + getString(R.string.celsius_sign));
             tvHeading.setText(" " + heading + " " + getString(R.string.deg_sign));
             tvBattery.setText(" " + batteryLevel + " " + getString(R.string.percent_sign));
-            tvSpeed.setText(" " + lastLocation.getSpeed() * 1.94 + " " + getString(R.string.kts_sign));
-            tvLon.setText(String.format(" " + lastLocation.getLatitude(), "^[0-9]*\\.[0-9]{1}$"));
-            tvLat.setText(String.format(" " + lastLocation.getLongitude(), "^[0-9]*\\.[0-9]{1}$"));
+            tvSpeed.setText(" " + String.format("%.2f",lastLocation.getSpeed() * 1.94) + " " + getString(R.string.kts_sign));
+            tvLon.setText(String.format("%.2f ", lastLocation.getLatitude()));
+            tvLat.setText(String.format("%.2f ", lastLocation.getLongitude()));
 
 
             mUserDataList.add(mTempUserData);

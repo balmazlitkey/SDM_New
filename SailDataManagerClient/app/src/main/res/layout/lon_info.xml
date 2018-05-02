@@ -27,7 +27,7 @@
             android:layout_height="wrap_content"
             android:text="Data:"
             android:textColor="@android:color/white"
-            android:textSize="24sp" />
+            android:textSize="13sp" />
 
         <TextView
             android:id="@+id/tvValue"
@@ -36,7 +36,7 @@
             android:layout_height="wrap_content"
             android:text="0"
             android:textColor="@android:color/white"
-            android:textSize="24sp" />
+            android:textSize="13sp" />
 
     </LinearLayout>
 

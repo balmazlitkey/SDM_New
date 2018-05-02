@@ -32,7 +32,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".Activities.InstrumentDataUIActivity" />
+        <activity android:name=".Activities.InstrumentDataUIActivity"
+            android:screenOrientation="portrait"/>
 
         <service android:name=".Service.UserDataBluetoothService" /><![CDATA[
 
