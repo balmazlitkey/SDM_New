@@ -54,8 +54,14 @@ public class InstrumentDataUIActivity extends AppCompatActivity {
     private TextView tvSpeed;
     private TextView tvBattery;
 
-    private boolean displayInstrumentData;
-    private boolean displayLocationData;
+    private UserData mTempUserData;
+
+    public UserData getTempUserData() {
+        if(mTempUserData != null){
+            return mTempUserData;
+        }
+        return null;
+    }
 
     private ArrayList<UserData> mUserDataList = new ArrayList<>();
 
@@ -169,7 +175,7 @@ public class InstrumentDataUIActivity extends AppCompatActivity {
 
     private void displayData(String rawData) {
 
-        UserData mTempUserData = new UserData();
+        mTempUserData = new UserData();
         if (rawData != null && rawData.replaceAll(" ", "").length() == 20 && lastLocation !=null) {
 
             String s = rawData.replaceAll(" ", "");
@@ -249,7 +255,7 @@ public class InstrumentDataUIActivity extends AppCompatActivity {
         averageUserData.setWindDirection((sumWindDirection / 10));
         averageUserData.setWindSpeed((sumWindSpeed / 10));
 
-        CoAPPostService.startActionPostUserData(this, "coap://10.0.2.2:5683/UserDataResource", averageUserData);
+        CoAPPostService.startActionPostUserData(this, "coap://192.168.1.94:5683/UserDataResource", averageUserData);
 
         mUserDataList.clear();
     }
@@ -301,7 +307,6 @@ public class InstrumentDataUIActivity extends AppCompatActivity {
             final String action = intent.getAction();
 
             if (UserDataBluetoothService.ACTION_DATA_AVAILABLE.equals(action)) {
-                displayInstrumentData = true;
                 displayData(intent.getStringExtra(UserDataBluetoothService.EXTRA_DATA));
             }
             if (UserDataBluetoothService.ACTION_GATT_CONNECTED.equals(action)) {

@@ -4,8 +4,8 @@
     <string name="lattitude">LAT:</string>
     <string name="longitude">LON:</string>
     <string name="tempreature">TMP:</string>
-    <string name="winddirection">AWA:</string>
-    <string name="windspeed">AWS:</string>
+    <string name="winddirection">TWA:</string>
+    <string name="windspeed">TWS:</string>
     <string name="permission_rat">For GPS tracking this application needs for location permission, please accept</string>
     <string name="permission_deny">For GPS tracking this application needs for location permission, please accept</string>
     <string name="battery">BAT:</string>
@@ -16,5 +16,6 @@
     <string name="percent_sign">%</string>
     <string name="main_toolbar_title">Available devices</string>
     <string name="title_activity_maps">Map</string>
-    <string name="disconnect">disconnect</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="start_routing">Start routing</string>
 </resources>

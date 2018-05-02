@@ -4,4 +4,8 @@
         android:id="@+id/disconnect"
         android:title="@string/disconnect">
     </item>
+    <item
+        android:id="@+id/start_routing_id"
+        android:title="@string/start_routing">
+    </item>
 </menu>

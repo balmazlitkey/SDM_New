@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
         android:id="@+id/findDevices"
-        android:title="search devices">
+        android:title="Search devices">
     </item>
     <item
         android:id="@+id/Map"

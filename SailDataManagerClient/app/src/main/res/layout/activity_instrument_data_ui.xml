@@ -2,6 +2,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#E1B16A"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <LinearLayout
@@ -74,19 +75,21 @@
                 android:layout_weight="1">
 
                 <include
-                    android:id="@+id/fieldLat"
-                    layout="@layout/lat_info" />
+                    android:id="@+id/fieldLng"
+                    layout="@layout/lon_info" />
 
             </LinearLayout>
 
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
                 android:layout_weight="1">
 
                 <include
-                    android:id="@+id/fieldLng"
-                    layout="@layout/lon_info" />
+                    android:id="@+id/fieldLat"
+                    layout="@layout/lat_info" />
 
             </LinearLayout>
         </LinearLayout>
@@ -134,7 +137,8 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1">
+                android:layout_weight="1"
+                android:weightSum="1">
 
                 <include
                     android:id="@+id/fieldBattery"
@@ -157,20 +161,14 @@
 
 
     <fragment xmlns:android="http://schemas.android.com/apk/res/android"
-        android:layout_below="@+id/fourth_layout"
         xmlns:map="http://schemas.android.com/apk/res-auto"
         xmlns:tools="http://schemas.android.com/tools"
         android:id="@+id/map"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginTop="40dp"
-        android:layout_marginBottom="20dp"
+        android:layout_below="@+id/fourth_layout"
         tools:context="com.example.balmaz.saildatamanagerclient.Activities.InstrumentDataUIActivity" />
 
-
-
-
-
-</RelativeLayout>
+    </RelativeLayout>
 

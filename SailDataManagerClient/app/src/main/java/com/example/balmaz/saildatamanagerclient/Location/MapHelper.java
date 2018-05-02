@@ -10,8 +10,11 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.content.ContextCompat;
+import android.view.View;
+import android.widget.TextView;
 
 import com.example.balmaz.saildatamanagerclient.Activities.InstrumentDataUIActivity;
+import com.example.balmaz.saildatamanagerclient.R;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
@@ -37,6 +40,37 @@ public class MapHelper implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
         LocationListener {
+
+    private class WindInfoWindowAdapter implements GoogleMap.InfoWindowAdapter{
+
+        private InstrumentDataUIActivity context;
+
+        public WindInfoWindowAdapter(InstrumentDataUIActivity context){
+            this.context = context;
+        }
+        @Override
+        public View getInfoWindow(Marker marker) {
+            return null;
+        }
+
+        @Override
+        public View getInfoContents(Marker marker) {
+            View view = context.getLayoutInflater().inflate(R.layout.wind_info_window, null);
+
+            TextView tvId = (TextView) view.findViewById(R.id.tv_ID);
+            TextView tvTWS = (TextView) view.findViewById(R.id.tv_TWS);
+            TextView tvTWA = (TextView) view.findViewById(R.id.tv_TWA);
+
+            if (context.getTempUserData() != null) {
+                tvId.setText(context.getTempUserData().getInstrumentID());
+                tvTWS.setText(context.getString(R.string.windspeed)+" "+String.format("%.2f",context.getTempUserData().getWindSpeed())+" " +context.getString(R.string.kts_sign));
+                tvTWA.setText(context.getString(R.string.windspeed)+" "+Integer.toString(context.getTempUserData().getWindDirection())+ " " + context.getString(R.string.deg_sign));
+            }
+
+            return view;
+
+        }
+    }
 
     public static final String BR_NEW_LOCATION = "BR_NEW_LOCATION";
     public static final String KEY_LOCATION = "KEY_LOCATION";
@@ -66,7 +100,7 @@ public class MapHelper implements OnMapReadyCallback,
         if (mMap!=null);
 
         mMap.clear();
-        PolylineOptions options = new PolylineOptions().width(10).color(Color.BLUE).geodesic(true);
+        PolylineOptions options = new PolylineOptions().width(10).color(Color.MAGENTA).geodesic(true);
         options.add(point);
         mMap.addPolyline(options);
     }
@@ -135,8 +169,11 @@ public class MapHelper implements OnMapReadyCallback,
         MarkerOptions markerOptions = new MarkerOptions();
         markerOptions.position(latLng);
         markerOptions.title("Current Position");
-        markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA));
+        markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_CYAN));
+        WindInfoWindowAdapter adapter = new WindInfoWindowAdapter(context);
+        mMap.setInfoWindowAdapter(adapter);
         mCurrLocationMarker = mMap.addMarker(markerOptions);
+        mCurrLocationMarker.showInfoWindow();
 
         //move map camera
         mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
@@ -153,7 +190,6 @@ public class MapHelper implements OnMapReadyCallback,
         }
 
     }
-
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
