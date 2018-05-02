@@ -130,6 +130,7 @@ public class UserData {
 		this.windDirection = windDirection;
 	}
 
+	//Generated toString() method
 	@Override
 	public String toString() {
 		return "UserData{" +

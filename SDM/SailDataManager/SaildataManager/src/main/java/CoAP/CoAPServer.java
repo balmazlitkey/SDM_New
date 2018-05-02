@@ -33,7 +33,6 @@ public class CoAPServer extends CoapServer {
 				if (addr instanceof Inet4Address || addr.isLoopbackAddress()) {
 					InetSocketAddress bindToAddress = new InetSocketAddress(addr, COAP_PORT);
 					System.out.println(bindToAddress.getHostName()+":"+bindToAddress.getPort());
-
 					addEndpoint(new CoapEndpoint(bindToAddress));
 				}
 			}

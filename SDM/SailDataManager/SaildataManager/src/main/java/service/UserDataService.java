@@ -19,17 +19,19 @@ public class UserDataService {
     public UserDataService() {
         mongoClient = new MongoClient();
         morphia = new Morphia();
-
     }
 
     public void saveUserData(UserData userData)
     {
-
         userDataDAO.save(userData);
     }
 
     public List<UserData> getAllUserDatas()
     {
+
+        for (int i=0;i<userDataDAO.find().asList().size();++i){
+            System.out.println(userDataDAO.find().asList().get(i).getInstrumentID());
+        }
         return userDataDAO.find().asList();
     }
 
@@ -40,7 +42,6 @@ public class UserDataService {
 
     public void initDB()
     {
-
         morphia.mapPackage("onlab.iot.datasailmanager.backend");
         morphia.map(UserData.class);
 
@@ -48,8 +49,6 @@ public class UserDataService {
         datastore.ensureIndexes();
 
         userDataDAO = new UserDataDAO(UserData.class, datastore);
-
-
     }
 
 
